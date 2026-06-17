@@ -1,0 +1,65 @@
+{
+    "name": "cpbuddy",
+    "displayName": "CPBuddy",
+    "description": "Competitive programming pattern detector and Socratic hint engine",
+    "version": "0.1.0",
+    "publisher": "your-publisher-name",
+    "engines": { "vscode": "^1.90.0" },
+    "categories": ["Education", "Other"],
+    "keywords": ["competitive programming", "leetcode", "ai", "hints"],
+    "icon": "media/icon.png",
+    "activationEvents": [],
+    "main": "./out/extension.js",
+    "contributes": {
+      "commands": [
+        {
+          "command": "cpbuddy.analyse",
+          "title": "CPBuddy: Detect Pattern"
+        },
+        {
+          "command": "cpbuddy.hint",
+          "title": "CPBuddy: Give Me a Hint"
+        }
+      ],
+      "configuration": {
+        "title": "CPBuddy",
+        "properties": {
+          "cpbuddy.apiUrl": {
+            "type": "string",
+            "default": "https://your-render-url.onrender.com",
+            "description": "CPBuddy backend API URL"
+          }
+        }
+      },
+      "viewsContainers": {
+        "activitybar": [
+          {
+            "id": "cpbuddy",
+            "title": "CPBuddy",
+            "icon": "media/icon.svg"
+          }
+        ]
+      },
+      "views": {
+        "cpbuddy": [
+          {
+            "type": "webview",
+            "id": "cpbuddy.sidebar",
+            "name": "Analysis"
+          }
+        ]
+      }
+    },
+    "scripts": {
+      "compile": "tsc -p ./",
+      "watch": "tsc -watch -p ./",
+      "package": "vsce package",
+      "publish": "vsce publish"
+    },
+    "devDependencies": {
+      "@types/vscode": "^1.90.0",
+      "@types/node": "^20.0.0",
+      "typescript": "^5.4.0",
+      "@vscode/vsce": "^2.26.0"
+    }
+  }
