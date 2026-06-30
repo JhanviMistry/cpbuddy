@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
-import { CPBuddyPanel } from "./panel";
-import { callApi } from "./api";
+import { CPBuddyPanel } from "./panel.ts";
+import { callApi } from "./api.ts";
 
 let hintCount = 0;
 

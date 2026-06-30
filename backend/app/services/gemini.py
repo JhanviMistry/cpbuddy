@@ -1,10 +1,28 @@
 import os
 import json
-import google.generativeai as genai
+import httpx
+from dotenv import load_dotenv
 from app.schemas.models import AnalyseResponse, HintResponse
 
-genai.configure(api_key=os.environ["GEMINI_API_KEY"])
-model = genai.GenerativeModel("gemini-1.5-flash")
+load_dotenv()
+
+API_KEY = os.environ["GEMINI_API_KEY"]
+BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent"
+
+async def _call_gemini(prompt: str) -> str:
+    payload = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"maxOutputTokens": 500, "temperature": 0.3}
+    }
+    async with httpx.AsyncClient(timeout=30) as client:
+        r = await client.post(f"{BASE_URL}?key={API_KEY}", json=payload)
+        r.raise_for_status()
+    raw = r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+    if raw.startswith("```"):
+        raw = raw.split("```")[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+    return raw.strip()
 
 
 ANALYSE_PROMPT = """You are a competitive programming coach. Analyse this {language} solution and respond ONLY with valid JSON — no markdown, no explanation outside the JSON.
@@ -21,43 +39,27 @@ Return exactly this structure:
 }}"""
 
 
-HINT_PROMPT = """You are a Socratic competitive programming coach. Your job is to guide, never to give away the answer.
+HINT_PROMPT = """You are a Socratic competitive programming coach. Never give away the answer.
 
-This is hint number {hint_number} the user has requested. Earlier hints should be more abstract; later hints can be slightly more concrete — but NEVER show code or name the exact algorithm directly.
+This is hint number {hint_number}. Earlier hints should be abstract; later hints slightly more concrete — but NEVER show code or name the exact algorithm.
 
-Code so far:
+Code:
 {code}
 
-Give a single, concise Socratic question or nudge (1-2 sentences max) that helps them think in the right direction.
-Also respond with should_reveal_more: true if hint_number >= 3, else false.
-
-Respond ONLY with valid JSON:
+Give a single Socratic nudge (1-2 sentences). Respond ONLY with valid JSON:
 {{
-  "hint": "your Socratic nudge here",
+  "hint": "your nudge here",
   "should_reveal_more": true or false
-}}"""
+}}
+
+should_reveal_more is true only if hint_number >= 3."""
 
 
 async def detect_pattern(code: str, language: str) -> AnalyseResponse:
-    prompt = ANALYSE_PROMPT.format(code=code, language=language)
-    response = model.generate_content(prompt)
-    raw = response.text.strip()
-    # strip any accidental markdown fences
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    data = json.loads(raw.strip())
-    return AnalyseResponse(**data)
+    raw = await _call_gemini(ANALYSE_PROMPT.format(code=code, language=language))
+    return AnalyseResponse(**json.loads(raw))
 
 
 async def get_hint(code: str, language: str, hint_number: int) -> HintResponse:
-    prompt = HINT_PROMPT.format(code=code, language=language, hint_number=hint_number)
-    response = model.generate_content(prompt)
-    raw = response.text.strip()
-    if raw.startswith("```"):
-        raw = raw.split("```")[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-    data = json.loads(raw.strip())
-    return HintResponse(**data)
+    raw = await _call_gemini(HINT_PROMPT.format(code=code, language=language, hint_number=hint_number))
+    return HintResponse(**json.loads(raw))
